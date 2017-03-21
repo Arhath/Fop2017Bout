@@ -8,6 +8,8 @@ import org.newdawn.slick.state.StateBasedGame;
 
 import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 
+import eea.engine.entity.StateBasedEntityManager;
+
 public class Breakout extends StateBasedGame implements GameParameters {
 
 	// Remember if the game runs in debug mode
@@ -26,7 +28,7 @@ public class Breakout extends StateBasedGame implements GameParameters {
 	public static boolean getDebug() {
 		return debug;
 	}
-
+	
 	public static void main(String[] args) throws SlickException {
 		// Set the library path depending on the operating system
 		if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -56,16 +58,16 @@ public class Breakout extends StateBasedGame implements GameParameters {
 	public void initStatesList(GameContainer arg0) throws SlickException {
 
 		// Add the game states (the first added state will be started initially)
-	  // This may look as follows, assuming you use the associated class names and constants:
-	  /*
-	    addState(new MainMenuState(MAINMENU_STATE));
-		  addState(new GameplayState(GAMEPLAY_STATE));
-		  addState(new HighscoreState(HIGHSCORE_STATE));
+		// This may look as follows, assuming you use the associated class names and constants:
 
-		  // Add the states to the StateBasedEntityManager
-		  StateBasedEntityManager.getInstance().addState(MAINMENU_STATE);
-		  StateBasedEntityManager.getInstance().addState(GAMEPLAY_STATE);
-		  StateBasedEntityManager.getInstance().addState(HIGHSCORE_STATE);
-    */
+	    addState(new MainMenuState(MAINMENU_STATE));
+		addState(new GameplayState(GAMEPLAY_STATE));
+		//addState(new HighscoreState(HIGHSCORE_STATE));
+	
+		// Add the states to the StateBasedEntityManager
+		StateBasedEntityManager.getInstance().addState(MAINMENU_STATE);
+		StateBasedEntityManager.getInstance().addState(GAMEPLAY_STATE);
+		//StateBasedEntityManager.getInstance().addState(HIGHSCORE_STATE);
+
 	}
 }

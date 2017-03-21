@@ -10,5 +10,6 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="Breakout/lwjgl-2.9.3/native"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="translator.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
