@@ -51,6 +51,11 @@ public class BorderFactory implements IEntityFactory, GameParameters {
 			position = new Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT / 2);
 			size = new Vector2f(BORDER_WIDTH, WINDOW_HEIGHT);
 			break;
+		case DOWN:
+			border = new Entity(DOWN_BORDER_ID);
+			position = new Vector2f(WINDOW_WIDTH / 2, WINDOW_HEIGHT);
+			size = new Vector2f(WINDOW_WIDTH, BORDER_WIDTH);
+			break;
 		default:
 			return null;
 		}

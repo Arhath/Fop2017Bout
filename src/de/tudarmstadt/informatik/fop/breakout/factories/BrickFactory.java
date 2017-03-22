@@ -19,7 +19,7 @@ import eea.engine.interfaces.IEntityFactory;
  * @author Tobias Otterbein, Benedikt Wartusch
  * 
  */
-public class BrickFactory implements GameParameters {
+public class BrickFactory implements IEntityFactory, GameParameters {
 	
 	private Vector<Entity> vBricks;
 	
@@ -34,23 +34,26 @@ public class BrickFactory implements GameParameters {
 	 * @param type
 	 *            determines the type of a created border (TOP, LEFT or RIGHT)
 	 */
+	
+	
 	public BrickFactory() {
 	}
 	
-	public Entity CreateBrick()
+	@Override
+	public Entity createEntity()
 	{
 		Entity brick;
-		
-		String uID = UUID.randomUUID().toString();
 
-		brick = new Entity(uID);
+		brick = new Entity(BLOCK_ID);
 				
+		brick.setPosition(new Vector2f((int)(Math.random()*800), (int)(Math.random()*400)));
 		brick.setVisible(true);
 		brick.setPassable(false);
+		brick.setScale(1.0f);
 		
 		try {
 			// Bild laden und zuweisen
-			brick.addComponent(new ImageRenderComponent(new Image("images/brick.png")));
+			brick.addComponent(new ImageRenderComponent(new Image("images/block_1.png")));
 		} catch (SlickException e) {
 			System.err.println("Cannot find file images/brick.png!");
 			e.printStackTrace();

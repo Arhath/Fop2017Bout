@@ -56,9 +56,9 @@ public class MainMenuState extends BasicGameState {
     	Entity new_Game_Entity = new Entity(new_Game);
     	
     	// Setze Position und Bildkomponente
-    	new_Game_Entity.setPosition(new Vector2f(120, 190));
-    	new_Game_Entity.setScale(0.4f);
-    	new_Game_Entity.addComponent(new ImageRenderComponent(new Image("images/entry.png")));
+    	new_Game_Entity.setPosition(new Vector2f(200, 190));
+    	new_Game_Entity.addComponent(new ImageRenderComponent(new Image("images/start.png")));
+    	new_Game_Entity.setScale(1.0f);
     	
     	// Erstelle das Ausloese-Event und die zugehoerige Action
     	ANDEvent mainEvents = new ANDEvent(new MouseEnteredEvent(), new MouseClickedEvent());
@@ -73,9 +73,9 @@ public class MainMenuState extends BasicGameState {
     	Entity quit_Entity = new Entity("Beenden");
     	
     	// Setze Position und Bildkomponente
-    	quit_Entity.setPosition(new Vector2f(120, 290));
-    	quit_Entity.setScale(0.4f);
-    	quit_Entity.addComponent(new ImageRenderComponent(new Image("images/entry.png")));
+    	quit_Entity.setPosition(new Vector2f(200, 320));
+    	quit_Entity.addComponent(new ImageRenderComponent(new Image("images/exit.png")));
+    	quit_Entity.setScale(1.0f);
     	
     	// Erstelle das Ausloese-Event und die zugehoerige Action
     	ANDEvent mainEvents_q = new ANDEvent(new MouseEnteredEvent(), new MouseClickedEvent());
@@ -104,11 +104,6 @@ public class MainMenuState extends BasicGameState {
 	public void render(GameContainer container, StateBasedGame game, 
 												Graphics g) throws SlickException {
 		entityManager.renderEntities(container, game, g);
-		
-		int counter = 0;
-		
-		g.drawString("New Game", 90, start_Position+counter*distance); counter++;
-		g.drawString("Beenden", 90, start_Position+counter*distance); counter++;
 	}
 
 	@Override

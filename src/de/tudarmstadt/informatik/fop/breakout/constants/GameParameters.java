@@ -25,13 +25,14 @@ public interface GameParameters {
 
 	// Borders
 	public enum BorderType {
-		TOP, LEFT, RIGHT
+		TOP, LEFT, RIGHT, DOWN
 	};
 
 	public static final int BORDER_WIDTH = 6;
 	public static final String TOP_BORDER_ID = "topBorder";
 	public static final String LEFT_BORDER_ID = "leftBorder";
 	public static final String RIGHT_BORDER_ID = "rightBorder";
+	public static final String DOWN_BORDER_ID = "downBorder";
 
 	// Blocks
 	public static final String MAP_FILE = "maps/level1.map";
@@ -47,6 +48,9 @@ public interface GameParameters {
 	public static final float INITIAL_BALL_SPEED = 0.3f;
 	public static final float SPEEDUP_VALUE = 0.0001f;
 	public static final String BALL_IMAGE = "/images/ball.png";
+	
+	// Block
+	public static final String BLOCK_ID = "block";
 
 	// Stick
 	public static final String STICK_ID = "stick";
