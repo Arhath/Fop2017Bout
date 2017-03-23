@@ -44,6 +44,8 @@ import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters.BorderType;
 import de.tudarmstadt.informatik.fop.breakout.factories.*;
 
+import de.tudarmstadt.informatik.fop.breakout.ui.SoundClipTest;
+
 
 /**
  * @author Timo Bähr
@@ -84,7 +86,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	
 	private static final float MAX_PLAYER_SPEED = 0.6f;
 	private static final float MAX_BALL_SPEED = 1.0f;
-	private static final float BALL_START_SPEED = 0.4f;
+	private static final float BALL_START_SPEED = 0.3f;
 	
 	private static final int MAX_LIFES = 4;
 	private int nLifes = MAX_LIFES;
@@ -173,12 +175,17 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
 				if (isRuning)
 				{
-					isLocked = false;
-					ballSpeed.y = BALL_START_SPEED;
-					if (playerSpeed.x != 0)
-						SetBallSpeedX(Math.signum(playerSpeed.x) * BALL_START_SPEED);
-					else
-						SetBallSpeedX((float)(BALL_START_SPEED * Math.signum(Math.random() - 0.5f)));
+					
+					if (isLocked)
+					{
+						ballSpeed.y = BALL_START_SPEED;
+						if (playerSpeed.x != 0)
+							SetBallSpeedX(Math.signum(playerSpeed.x) * BALL_START_SPEED);
+						else
+							SetBallSpeedX((float)(BALL_START_SPEED * Math.signum(Math.random() - 0.5f)));
+						
+						isLocked = false;
+					}
 				}
 			}
     	});
@@ -590,11 +597,14 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	if (hp <= 0)
     	{
+    		new SoundClipTest("Omnomnom.wav");
     		vBricks.set(ID, null);
     		entityManager.removeEntity(stateID, t);
     	}
     	else
     	{
+			new SoundClipTest("Autsch.wav");
+			
 	    	try {
 				// Bild laden und zuweisen
 				t.addComponent(new ImageRenderComponent(new Image("images/block_" + hp + ".png")));
