@@ -2,6 +2,17 @@ package de.tudarmstadt.informatik.fop.breakout.ui;
 
 
 import java.awt.geom.Arc2D.Double;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.annotation.Target;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
@@ -55,9 +66,22 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private boolean bSkipCollision = false;
 	
 	private boolean isRuning = true;
+	private boolean asd = false;
 	
 	private int nSkipFrames = 4;
 	private int nSkipCount = 0;
+	
+	private float fTotalHighscore = 1000000.0f;
+	private float fTimeMultiplier = 200.0f;
+	
+	private int nTotalBlocks = 0;
+	
+	private float fTime = 0;
+	private float fTimeForLevel = 400.0f;
+	
+	private static final float MAX_PLAYER_SPEED = 0.6f;
+	private static final float MAX_BALL_SPEED = 1.0f;
+	private static final float BALL_START_SPEED = 0.4f;
 	
 	private static final int MAX_LIFES = 4;
 	private int nLifes = MAX_LIFES;
@@ -70,18 +94,206 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private Entity entPlayer;
 	private Entity entBall;
 	
+	private List<Entity> vBricks = new ArrayList<Entity>();
+	private List<Integer> vBrickHp = new ArrayList<Integer>();
+	
 	LoopEvent move = new LoopEvent();
 	
 	LoopEvent pMove = new LoopEvent();
 	
 	Action pMoveX = new MoveRightAction(0.0f);
 	
-	Action actionX = new MoveRightAction(0.5f);
-	Action actionY = new MoveUpAction(0.5f);
+	Action actionX = new MoveRightAction(0.0f);
+	Action actionY = new MoveUpAction(0.0f);
     
     GameplayState( int sid ) {
        stateID = sid;
        entityManager = StateBasedEntityManager.getInstance();
+    }
+    
+    /**
+     * Wird vor dem (erstmaligen) Starten dieses States ausgefuehrt
+     */
+    @Override
+	public void init(GameContainer container, StateBasedGame game) throws SlickException {
+    	
+    	
+    	// Hintergrund laden
+//    	Entity background = new Entity("background");	// Entitaet fuer Hintergrund
+//    	background.setPosition(new Vector2f(400,300));	// Startposition des Hintergrunds
+//    	background.addComponent(new ImageRenderComponent(new Image("/images/background.png"))); // Bildkomponente
+//    	background.setScale(1.1f);
+//    	
+//    	background.setPassable(true);
+//    	
+//    	// Hintergrund-Entitaet an StateBasedEntityManager uebergeben
+//    	entityManager.getInstance().addEntity(stateID, background);
+    	
+    	
+    	
+    	//Create Borders
+    	
+    	entityManager.addEntity(stateID, new BorderFactory(BorderType.TOP).createEntity());
+    	entityManager.addEntity(stateID, new BorderFactory(BorderType.LEFT).createEntity());
+    	entityManager.addEntity(stateID, new BorderFactory(BorderType.RIGHT).createEntity());
+    	entityManager.addEntity(stateID, new BorderFactory(BorderType.DOWN).createEntity());
+    	
+    	for(int i = 0; i <= MAX_LIFES; i++)
+    	{
+    		Entity entlife = new Entity("life" + i);
+    		entlife.setPassable(false);
+    		entlife.setVisible(true);
+    		entlife.setPosition(new Vector2f(i*50 + 30, 577));
+    		entlife.addComponent(new ImageRenderComponent(new Image("/images/ball.png"))); // Bildkomponente
+    		
+    		entityManager.addEntity(stateID, entlife);
+    	}
+    	
+    	// Bei Drücken der ESC-Taste zurueck ins Hauptmenue wechseln
+    	Entity esc_Listener = new Entity("ESC_Listener");
+    	KeyPressedEvent esc_pressed = new KeyPressedEvent(Input.KEY_ESCAPE);
+    	esc_pressed.addAction(new ChangeStateAction(Breakout.MAINMENU_STATE));
+    	esc_Listener.addComponent(esc_pressed);    	
+    	entityManager.addEntity(stateID, esc_Listener);
+    	
+    	
+    	Entity space_Listener = new Entity("SPACE_Listener");
+    	KeyPressedEvent space_pressed = new KeyPressedEvent(Input.KEY_SPACE);
+    	space_pressed.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				if (isRuning)
+				{
+					isLocked = false;
+					ballSpeed.y = BALL_START_SPEED;
+					if (playerSpeed.x != 0)
+						SetBallSpeedX(Math.signum(playerSpeed.x) * BALL_START_SPEED);
+					else
+						SetBallSpeedX((float)(BALL_START_SPEED * Math.signum(Math.random() - 0.5f)));
+				}
+			}
+    	});
+    	space_Listener.addComponent(space_pressed);
+    	entityManager.addEntity(stateID, space_Listener);
+    	
+
+    	Entity pause_Listener = new Entity("PAUSE_Listener");
+    	KeyPressedEvent pause_pressed = new KeyPressedEvent(Input.KEY_P);
+    	pause_pressed.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				
+				StoreHighscore(999999999);
+				gc.setPaused(!gc.isPaused());
+			}
+    	});
+    	pause_Listener.addComponent(pause_pressed);    	
+    	entityManager.addEntity(stateID, pause_Listener);
+    	
+    	// Bei Mausklick soll Wassertropfen erscheinen
+//    	Entity mouse_Clicked_Listener = new Entity("Mouse_Clicked_Listener");
+//    	MouseClickedEvent mouse_Clicked = new MouseClickedEvent();
+//    	
+//    	mouse_Clicked.addAction(new Action() {
+//			@Override
+//			public void update(GameContainer gc, StateBasedGame sb, int delta,
+//					Component event) {
+//				// Wassertropfen wird erzeugt
+//				Entity ball = new BallFactory().createEntity();
+//				ball.setPosition(new Vector2f(gc.getInput().getMouseX(),gc.getInput().getMouseY()));
+//				
+//
+//				
+//				// Wassertropfen faellt nach unten
+//				LoopEvent loop = new LoopEvent();
+//		    	loop.addAction(new MoveDownAction(0.5f));
+//		    	ball.addComponent(loop);
+//		    	
+//		    	// Wenn der Bildschirm verlassen wird, dann ...
+//		    	LeavingScreenEvent lse = new LeavingScreenEvent();
+//		    	
+//		    	// ... zerstoere den Wassertropfen
+//		    	lse.addAction(new DestroyEntityAction());
+//		    	// ... und wechsle ins Hauptmenue
+//		    	//lse.addAction(new ChangeStateAction(Breakout.MAINMENU_STATE));
+//		    	
+//		    	ball.addComponent(lse);
+//		    	entityManager.addEntity(stateID, ball);
+//			}    		
+//    	});
+//    	mouse_Clicked_Listener.addComponent(mouse_Clicked);
+//    	
+//    	entityManager.addEntity(stateID, mouse_Clicked_Listener);
+    	
+    	ReadLevel();
+
+    	CreatePlayer();
+    	
+    	CreateBall();
+    	
+    	BallReset();
+    }
+    
+    public void ReadLevel()
+    {
+    	try {
+			File file = new File(System.getProperty("user.dir") + "/maps/level1.map");
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			StringBuffer stringBuffer = new StringBuffer();
+			String line;
+			
+			int lineCount = 1, brickCount = 0;
+			int idBrick = 0;
+			int nTotal = 0;
+			
+			Entity entBrick = null;
+			
+			while ((line = bufferedReader.readLine()) != null) {
+				
+				String[] parts = line.split(",");
+				System.out.println(parts[0]);
+				
+				for (int i = 0; i <= parts.length-1; i++)
+				{
+					int hp = Integer.parseInt(parts[i]);
+					System.out.println(hp);
+					
+					if (hp > 0)
+					{
+						entBrick = new BrickFactory(hp, idBrick).createEntity();
+						Vector2f size = entBrick.getSize();
+						Vector2f pos = new Vector2f( size.x * (brickCount + 0.5f),  size.y * (lineCount + 0.5f));
+						entBrick.setPosition(pos);
+						
+						nTotal += 1;
+						
+						entityManager.addEntity(stateID, entBrick);
+					}
+						
+					vBricks.add(entBrick);
+					vBrickHp.add(hp);
+					
+					brickCount += 1;
+					idBrick += 1;
+				}
+				
+				System.out.println(" newline" + lineCount);
+				lineCount += 1;
+				brickCount = 0;
+				
+				stringBuffer.append(line);
+				stringBuffer.append("\n");
+			}
+			
+			nTotalBlocks = nTotal;
+			
+			fileReader.close();
+			//System.out.println("Contents of file:");
+			//System.out.println(stringBuffer.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
     
     public void CreatePlayer() throws SlickException
@@ -103,56 +315,45 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			@Override
 			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
 				
+				pMove.removeAction(pMoveX);
+				
 				if (!isRuning)
-					sb.enterState(MAINMENU_STATE);
+					return;
 				
 				boolean bl = gc.getInput().isKeyDown(Input.KEY_A);
 		    	boolean br = gc.getInput().isKeyDown(Input.KEY_D);
-
-		    	playerSpeed.x = 0.0f;
 		    	
 		    	Vector2f pvec = entPlayer.getPosition();
 		    	
+		    	if (!bl && !br)
+		    		playerSpeed.x = 0.0f;
+		    	
 		    	if (bl)
 		    	{
-		    		if (pvec.x >= 69)
-		    			playerSpeed.x = -0.5f;
+		    		if (pvec.x >= entPlayer.getSize().x/2)
+		    			playerSpeed.x = Math.max(-1 * MAX_PLAYER_SPEED, Math.abs(playerSpeed.x - 0.1f) * -1.1f);
+		    		else
+		    			playerSpeed.x = 0.0f;
 		    	}
 		    	
 		    	if (br)
 		    	{
-		    		if (pvec.x <= 730)
-		    			playerSpeed.x = 0.5f;
+		    		if (pvec.x <= WINDOW_WIDTH - entPlayer.getSize().x/2)
+		    			playerSpeed.x = Math.min(MAX_PLAYER_SPEED, Math.abs(playerSpeed.x + 0.1f) * 1.1f);
+		    		else
+		    			playerSpeed.x = 0.0f;
 		    	}
 		    	
-		    	pMove.removeAction(pMoveX);
 		    	pMoveX = new MoveRightAction(playerSpeed.x);		
 		    	pMove.addAction(pMoveX);
+		    	
+		    	//System.out.println(CountBlocks());
 			}
 			});
     	entPlayer.addComponent(pUpdate);
-
-    	CollisionEvent collision = new CollisionEvent();
     	
-    	collision.addAction(new Action() {
-			@Override
-			public void update(GameContainer gc, StateBasedGame sb, int delta,
-					Component event) {
-				
-				Entity target = collision.getCollidedEntity();
-				Vector2f vPlayer = entPlayer.getPosition();
-				
-				if (target.getID() == "background")
-				{
-					if (vPlayer.x < 400)
-						bBlockedLeft = true;
-					else
-						bBlockedRight = true;
-				}
-			}    		
-    		});
     	
-    	entPlayer.addComponent(collision);
+    	
     }
      
     
@@ -180,6 +381,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
 				Entity target = collision.getCollidedEntity();
 				
+				System.out.println(target.getID());
+				
 				Vector2f pall = entBall.getPosition();
 				Vector2f vTarget = target.getPosition();
 			
@@ -189,7 +392,16 @@ public class GameplayState extends BasicGameState implements GameParameters {
 				double dOffX = (90.0d - Math.toDegrees(Math.atan(target.getSize().y / target.getSize().x)));
 				double dOffY = (360.0d - dOffX*4)/2;
 				
-				switch(target.getID())
+				String tID = (String)target.getID();
+				String id = "";
+				
+				if (tID.contains("block"))
+				{
+					id = tID.substring(5);
+					tID = "block";
+				}
+				
+				switch(tID)
 				{
 				case "leftBorder":
 					ballSpeed.x = Math.abs(ballSpeed.x);
@@ -219,8 +431,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 						else
 						{
 							ballSpeed.y = Math.abs(ballSpeed.y);
-							if (Math.abs(playerSpeed.x) >= Math.abs(ballSpeed.x))
-								ballSpeed.x = playerSpeed.x;
+							if (playerSpeed.x != 0)
+								ballSpeed.x = Math.signum(playerSpeed.x) * Math.abs(ballSpeed.x);
 						}
 					
 					if (pall.y >= vTarget.y - target.getSize().y / 2 && pall.y <= vTarget.y + target.getSize().y / 2 )
@@ -239,6 +451,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					break;
 					
 				case "block":
+					
+					System.out.println(id);
 					
 					if (target.isPassable())
 						return;
@@ -279,13 +493,14 @@ public class GameplayState extends BasicGameState implements GameParameters {
 //						ballSpeed.x = Math.abs(ballSpeed.x);
 //					}
 					
-			    	entityManager.removeEntity(stateID, target);
+					BlockHit(target, id, 1);
+
 					//target.setVisible(false);
 					//target.setPassable(true);
 					break;
 				}
 				
-				bSkipCollision = true;
+				SkipCollision(4);
 			}    	
     		});
     	
@@ -297,12 +512,16 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			@Override
 			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
 				
-				if(!isRuning)
-					return;
-				
 				move.removeAction(actionX);
 		    	move.removeAction(actionY);
 		    	
+				if(!isRuning)
+					return;
+		    	
+				//System.out.println(ballSpeed.x);
+				
+				SetBallSpeedX(ballSpeed.x * (1 + SPEEDUP_VALUE));
+				
 		    	if (isLocked)
 		    	{
 		    		ballSpeed.x = playerSpeed.x;
@@ -334,10 +553,105 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	entBall.addComponent(ballUpdate);
     }
     
+    public int CountBlockHp()
+    {
+    	int HP = 0;
+    	
+    	for(int i = 0; i < vBricks.size(); i++)
+    		HP += vBrickHp.get(i);
+    	
+    	return HP;
+    }
+    
+    public int CountBlocks()
+    {
+    	int c = 0;
+    	
+    	for(int i = 0; i < vBricks.size(); i++)
+    		if (vBricks.get(i) != null && vBrickHp.get(i) > 0)
+    			c += 1;
+    	
+    	return c;
+    }
+    
+    public void BlockHit(Entity t, String id, int dmg)
+    {
+    	int ID = Integer.parseInt(id);
+    	int hp = vBrickHp.get(ID);
+    	hp -= dmg;
+    	vBrickHp.set(ID, Math.max(hp, 0));
+    	
+    	if (hp <= 0)
+    	{
+    		vBricks.set(ID, null);
+    		entityManager.removeEntity(stateID, t);
+    	}
+    	else
+    	{
+	    	try {
+				// Bild laden und zuweisen
+				t.addComponent(new ImageRenderComponent(new Image("images/block_" + hp + ".png")));
+			} catch (SlickException e) {
+				System.err.println("Cannot find file images/brick.png!");
+				e.printStackTrace();
+			}
+    	}
+    	
+    	int hpTotal = CountBlockHp();
+    	
+    	System.out.println("total hp " + hpTotal);
+    	if (hpTotal <= 0)
+    		GameWon();
+    }
+    
+    public void GameWon()
+    {
+    	isRuning = false;
+    	System.out.println("YOU WIN");
+    }
+
     public void GameOver()
     {
     	isRuning = false;
     	System.out.println("game over");
+    }
+    
+    public void StoreHighscore(int score)
+    {
+    	boolean scoreSet = false;
+    	String filepath = System.getProperty("user.dir") + "/maps/highscores.txt";
+    	
+    	try {
+			File file = new File(filepath);
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			StringBuffer stringBuffer = new StringBuffer();
+			String line;
+			
+			while ((line = bufferedReader.readLine()) != null){
+				
+				if(score > Integer.parseInt(line.trim()) && !scoreSet)
+				{
+					line = Integer.toString(score);
+					scoreSet = true;
+				}
+				
+				stringBuffer.append(line);
+				stringBuffer.append("\n");
+			}
+
+    		fileReader.close();
+    		
+    		
+    		PrintWriter writer = new PrintWriter(filepath, "UTF-8");
+    	    writer.print(stringBuffer.toString());
+    	    writer.close();
+    		
+			System.out.println("Contents of file:");
+			System.out.println(stringBuffer.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
     
     public void PlayerLooseLife()
@@ -354,6 +668,31 @@ public class GameplayState extends BasicGameState implements GameParameters {
     		BallReset();
 			nLifes -= 1;
     	}
+    }
+ 
+    
+    public void SetBallSpeedX(float sp)
+    {
+    	if (sp == 0)
+    		ballSpeed.x = sp;
+    	
+    	if(sp > 0)
+    		ballSpeed.x = Math.min(MAX_BALL_SPEED, sp);
+    	
+    	if(sp < 0)
+    		ballSpeed.x = Math.max(-1 * MAX_BALL_SPEED, sp);
+    }
+    
+    public void SetBallSpeedY(float sp)
+    {
+    	if (sp == 0)
+    		ballSpeed.y = sp;
+    	
+    	if(sp > 0)
+    		ballSpeed.y = Math.min(MAX_BALL_SPEED, sp);
+    	
+    	if(sp < 0)
+    		ballSpeed.y = Math.max(-1 * MAX_BALL_SPEED, sp);
     }
     
     public void BallReset()
@@ -418,110 +757,9 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	    return target >= angle1 || target <= angle2;
 	}  
     
-    /**
-     * Wird vor dem (erstmaligen) Starten dieses States ausgefuehrt
-     */
-    @Override
-	public void init(GameContainer container, StateBasedGame game) throws SlickException {
-    	
-    	
-    	// Hintergrund laden
-//    	Entity background = new Entity("background");	// Entitaet fuer Hintergrund
-//    	background.setPosition(new Vector2f(400,300));	// Startposition des Hintergrunds
-//    	background.addComponent(new ImageRenderComponent(new Image("/images/background.png"))); // Bildkomponente
-//    	background.setScale(1.1f);
-//    	
-//    	background.setPassable(true);
-//    	
-//    	// Hintergrund-Entitaet an StateBasedEntityManager uebergeben
-//    	entityManager.getInstance().addEntity(stateID, background);
-    	
-    	
-    	
-    	//Create Borders
-    	
-    	entityManager.addEntity(stateID, new BorderFactory(BorderType.TOP).createEntity());
-    	entityManager.addEntity(stateID, new BorderFactory(BorderType.LEFT).createEntity());
-    	entityManager.addEntity(stateID, new BorderFactory(BorderType.RIGHT).createEntity());
-    	entityManager.addEntity(stateID, new BorderFactory(BorderType.DOWN).createEntity());
-    	
-    	for(int i = 0; i <= 40; i++)
-    		entityManager.addEntity(stateID, new BrickFactory().createEntity());
-    	
-    	for(int i = 0; i <= MAX_LIFES; i++)
-    	{
-    		Entity entlife = new Entity("life" + i);
-    		entlife.setPassable(false);
-    		entlife.setVisible(true);
-    		entlife.setPosition(new Vector2f(i*50 + 30, 577));
-    		entlife.addComponent(new ImageRenderComponent(new Image("/images/ball.png"))); // Bildkomponente
-    		
-    		entityManager.addEntity(stateID, entlife);
-    	}
-    	
-    	// Bei Drücken der ESC-Taste zurueck ins Hauptmenue wechseln
-    	Entity esc_Listener = new Entity("ESC_Listener");
-    	KeyPressedEvent esc_pressed = new KeyPressedEvent(Input.KEY_ESCAPE);
-    	esc_pressed.addAction(new ChangeStateAction(Breakout.MAINMENU_STATE));
-    	esc_Listener.addComponent(esc_pressed);    	
-    	entityManager.addEntity(stateID, esc_Listener);
-    	
-    	
-    	Entity space_Listener = new Entity("SPACE_Listener");
-    	KeyPressedEvent space_pressed = new KeyPressedEvent(Input.KEY_SPACE);
-    	space_pressed.addAction(new Action() {
-			@Override
-			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
-				isLocked = false;
-				ballSpeed.y = 0.5f;
-			}
-    	});
-    	space_Listener.addComponent(space_pressed);    	
-    	entityManager.addEntity(stateID, space_Listener);
-    	
-    	// Bei Mausklick soll Wassertropfen erscheinen
-//    	Entity mouse_Clicked_Listener = new Entity("Mouse_Clicked_Listener");
-//    	MouseClickedEvent mouse_Clicked = new MouseClickedEvent();
-//    	
-//    	mouse_Clicked.addAction(new Action() {
-//			@Override
-//			public void update(GameContainer gc, StateBasedGame sb, int delta,
-//					Component event) {
-//				// Wassertropfen wird erzeugt
-//				Entity ball = new BallFactory().createEntity();
-//				ball.setPosition(new Vector2f(gc.getInput().getMouseX(),gc.getInput().getMouseY()));
-//				
-//
-//				
-//				// Wassertropfen faellt nach unten
-//				LoopEvent loop = new LoopEvent();
-//		    	loop.addAction(new MoveDownAction(0.5f));
-//		    	ball.addComponent(loop);
-//		    	
-//		    	// Wenn der Bildschirm verlassen wird, dann ...
-//		    	LeavingScreenEvent lse = new LeavingScreenEvent();
-//		    	
-//		    	// ... zerstoere den Wassertropfen
-//		    	lse.addAction(new DestroyEntityAction());
-//		    	// ... und wechsle ins Hauptmenue
-//		    	//lse.addAction(new ChangeStateAction(Breakout.MAINMENU_STATE));
-//		    	
-//		    	ball.addComponent(lse);
-//		    	entityManager.addEntity(stateID, ball);
-//			}    		
-//    	});
-//    	mouse_Clicked_Listener.addComponent(mouse_Clicked);
-//    	
-//    	entityManager.addEntity(stateID, mouse_Clicked_Listener);
-    	
-
-    	CreatePlayer();
-    	
-    	CreateBall();
-    }
-    
-    public void SkipCollision()
+    public void SkipCollision(int nFrames)
     {
+    	nSkipFrames = nFrames;
     	bSkipCollision = true;
     	nSkipCount = 0;
     }
@@ -537,6 +775,9 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	bRight = gc.getInput().isKeyDown(Input.KEY_D);
 
     	entityManager.updateEntities(gc, game, delta);
+    	
+    	if (!gc.isPaused())
+    		fTime += delta;
 	}
     
     /**
@@ -548,7 +789,36 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		g.drawImage(new Image("/images/background.png"), 0, 0);	
 		entityManager.renderEntities(container, game, g);
 		
-		g.drawString("GAME", 200, 200);
+
+		if (container.isPaused())
+		{
+			g.drawImage(new Image("/images/pause.png"), 300, 360);
+		}
+		
+			//g.drawImage(new Image("/images/pause.png"), 0, 0);
+			//g.drawString("GAME", 200, 200);
+		
+		int nBricks = 0;
+		
+		for(int i = 0; i < vBricks.size(); i++)
+		{
+			Entity ent = entityManager.getEntity(stateID, "block" + i);
+			
+			if (ent != null)
+				nBricks += 1;
+		}
+		
+		float timeLeft = fTimeForLevel - fTime / 1000;
+		
+		float highscore =  (1 - (float)nBricks / nTotalBlocks) * fTotalHighscore;
+		
+		if (timeLeft <= 0)
+			GameOver();
+		
+		g.drawString("|    " + nBricks + " / " + nTotalBlocks + "  |  " + (int)(timeLeft) + "s" + "  |  " + (int)highscore, 130, 10);
+		
+		//System.out.println(highscore + "ents: " + nTotalBlocks + " / " + nBricks + " time: " + fTime / 1000);
+		
 	}
 
 	@Override
