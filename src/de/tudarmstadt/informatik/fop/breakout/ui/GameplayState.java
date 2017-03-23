@@ -191,8 +191,6 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	pause_pressed.addAction(new Action() {
 			@Override
 			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
-				
-				StoreHighscore(999999999);
 				gc.setPaused(!gc.isPaused());
 			}
     	});
