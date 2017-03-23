@@ -18,6 +18,7 @@ public interface GameParameters {
 	public static final int MAINMENU_STATE = 0;
 	public static final int GAMEPLAY_STATE = 1;
 	public static final int HIGHSCORE_STATE = 2;
+	public static final int CREDITS_STATE = 3;
 
 	// Background
 	public static final String BACKGROUND_ID = "background";

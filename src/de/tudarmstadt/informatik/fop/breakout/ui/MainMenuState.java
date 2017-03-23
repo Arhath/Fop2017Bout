@@ -69,6 +69,34 @@ public class MainMenuState extends BasicGameState {
     	// Fuege die Entity zum StateBasedEntityManager hinzu
     	entityManager.addEntity(this.stateID, new_Game_Entity);
     	
+    	Entity score_Entity = new Entity("highscore");
+    	score_Entity.setPosition(new Vector2f(200, 450));
+    	score_Entity.addComponent(new ImageRenderComponent(new Image("images/highscore.png")));
+    	score_Entity.setScale(1.0f);
+    	
+    	// Erstelle das Ausloese-Event und die zugehoerige Action
+    	ANDEvent mainEventss = new ANDEvent(new MouseEnteredEvent(), new MouseClickedEvent());
+    	Action new_Game_Actions = new ChangeStateInitAction(Breakout.HIGHSCORE_STATE);
+    	mainEventss.addAction(new_Game_Actions);
+    	score_Entity.addComponent(mainEventss);
+    	
+    	// Fuege die Entity zum StateBasedEntityManager hinzu
+    	entityManager.addEntity(this.stateID, score_Entity);
+    	
+    	Entity credit_Entity = new Entity("highscore");
+    	credit_Entity.setPosition(new Vector2f(350, 450));
+    	credit_Entity.addComponent(new ImageRenderComponent(new Image("images/credits.png")));
+    	credit_Entity.setScale(0.5f);
+    	
+    	// Erstelle das Ausloese-Event und die zugehoerige Action
+    	ANDEvent creditEvent = new ANDEvent(new MouseEnteredEvent(), new MouseClickedEvent());
+    	Action credit_Action = new ChangeStateInitAction(Breakout.CREDITS_STATE);
+    	creditEvent.addAction(credit_Action);
+    	credit_Entity.addComponent(creditEvent);
+    	
+    	// Fuege die Entity zum StateBasedEntityManager hinzu
+    	entityManager.addEntity(this.stateID, credit_Entity);
+    	
     	/* Beenden-Entitaet */
     	Entity quit_Entity = new Entity("Beenden");
     	

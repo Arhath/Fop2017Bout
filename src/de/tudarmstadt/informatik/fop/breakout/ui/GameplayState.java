@@ -66,13 +66,16 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private boolean bSkipCollision = false;
 	
 	private boolean isRuning = true;
-	private boolean asd = false;
+	
+	private boolean isHighscore = false;
+	
+	private boolean scoreStored = false;
 	
 	private int nSkipFrames = 4;
 	private int nSkipCount = 0;
 	
 	private float fTotalHighscore = 1000000.0f;
-	private float fTimeMultiplier = 200.0f;
+	private float fTimeMultiplier = 20.0f;
 	
 	private int nTotalBlocks = 0;
 	
@@ -137,6 +140,12 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.LEFT).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.RIGHT).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.DOWN).createEntity());
+    	
+    	Entity entState = new Entity("gamestate");
+    	entState.setScale(1.0f);
+    	entState.setPosition(new Vector2f(-100, -100));
+    	entState.setVisible(false);
+    	entityManager.addEntity(stateID, entState);
     	
     	for(int i = 0; i <= MAX_LIFES; i++)
     	{
@@ -608,12 +617,16 @@ public class GameplayState extends BasicGameState implements GameParameters {
     {
     	isRuning = false;
     	System.out.println("YOU WIN");
+    	Entity ent = entityManager.getEntity(stateID, "gamestate");
+    	ent.setScale(3.0f);
     }
 
     public void GameOver()
     {
     	isRuning = false;
     	System.out.println("game over");
+    	Entity ent = entityManager.getEntity(stateID, "gamestate");
+    	ent.setScale(2.0f);
     }
     
     public void StoreHighscore(int score)
@@ -634,6 +647,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 				{
 					line = Integer.toString(score);
 					scoreSet = true;
+					isHighscore = true;
 				}
 				
 				stringBuffer.append(line);
@@ -776,7 +790,10 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
     	entityManager.updateEntities(gc, game, delta);
     	
-    	if (!gc.isPaused())
+    	Entity entState = entityManager.getEntity(stateID, "gamestate");
+		int gameState = (int)entState.getScale();
+    	
+    	if (!gc.isPaused() && gameState <= 1)
     		fTime += delta;
 	}
     
@@ -818,6 +835,44 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		g.drawString("|    " + nBricks + " / " + nTotalBlocks + "  |  " + (int)(timeLeft) + "s" + "  |  " + (int)highscore, 130, 10);
 		
 		//System.out.println(highscore + "ents: " + nTotalBlocks + " / " + nBricks + " time: " + fTime / 1000);
+		
+		Entity entState = entityManager.getEntity(stateID, "gamestate");
+		
+		int gameState = (int)entState.getScale();
+		System.out.println(gameState);
+		
+		switch (gameState)
+		{
+		case 1:
+			
+			break;
+			
+		case 2:
+			if (!scoreStored)
+				StoreHighscore((int)highscore);
+			scoreStored = true;
+			
+			g.drawImage(new Image("/images/Lose.png"), 300, 360);
+			if (isHighscore)
+				g.drawString("New Highscore: " + (int)highscore + " !!", 500, 400);
+			else
+				g.drawString("Score: " + (int)highscore, 500, 400);
+			break;
+			
+		case 3:
+			highscore = highscore * fTimeMultiplier * timeLeft / fTimeForLevel;
+			
+			if (!scoreStored)
+				StoreHighscore((int)highscore);
+			scoreStored = true;
+			
+			g.drawImage(new Image("/images/win.png"), 300, 360);
+			if (isHighscore)
+				g.drawString("New Highscore: " + (int)highscore + " !!", 500, 400);
+			else
+				g.drawString("Score: " + (int)highscore, 500, 400);
+			break;
+		}
 		
 	}
 
