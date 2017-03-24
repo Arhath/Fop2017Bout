@@ -9,6 +9,7 @@ import org.newdawn.slick.state.StateBasedGame;
 import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 
 import eea.engine.entity.StateBasedEntityManager;
+import translator.Debug;
 
 public class Breakout extends StateBasedGame implements GameParameters {
 

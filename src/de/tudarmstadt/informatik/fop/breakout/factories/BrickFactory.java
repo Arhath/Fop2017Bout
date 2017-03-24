@@ -29,7 +29,7 @@ public class BrickFactory implements IEntityFactory, GameParameters {
 	
 	private Vector<Entity> vBricks;
 	
-	private int ID;
+	private String ID;
 	private int HP;
 	
 	public int GetNumBricks()
@@ -45,7 +45,7 @@ public class BrickFactory implements IEntityFactory, GameParameters {
 	 */
 	
 	
-	public BrickFactory(int hp, int id) {
+	public BrickFactory(int hp, String id) {
 		ID = id;
 		HP = hp;
 	}
@@ -64,6 +64,7 @@ public class BrickFactory implements IEntityFactory, GameParameters {
 		
 		try {
 			// Bild laden und zuweisen
+			if(!DEBUG)
 			brick.addComponent(new ImageRenderComponent(new Image("images/block_" + HP + ".png")));
 		} catch (SlickException e) {
 			System.err.println("Cannot find file images/brick.png!");

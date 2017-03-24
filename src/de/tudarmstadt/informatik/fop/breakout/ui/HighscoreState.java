@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
@@ -15,6 +16,7 @@ import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
+import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 import eea.engine.action.Action;
 import eea.engine.action.basicactions.ChangeStateAction;
 import eea.engine.action.basicactions.ChangeStateInitAction;
@@ -34,7 +36,7 @@ import eea.engine.event.basicevents.MouseEnteredEvent;
  * Spiel gestartet werden kann und das gesamte Spiel beendet 
  * werden kann.
  */
-public class HighscoreState extends BasicGameState {
+public class HighscoreState extends BasicGameState implements GameParameters {
 
 	private int stateID; 							// Identifier von diesem BasicGameState
 	private StateBasedEntityManager entityManager; 	// zugehoeriger entityManager
@@ -55,7 +57,8 @@ public class HighscoreState extends BasicGameState {
     	// Hintergrund laden
     	Entity background = new Entity("menu");	// Entitaet fuer Hintergrund
     	background.setPosition(new Vector2f(400,300));	// Startposition des Hintergrunds
-    	background.addComponent(new ImageRenderComponent(new Image("/images/menu_blank.png"))); // Bildkomponente
+    	if(!DEBUG)
+    	background.addComponent(new ImageRenderComponent(new Image("/images/menu.png"))); // Bildkomponente
     	
     	Entity esc_Listener = new Entity("ESC_Listener");
     	KeyPressedEvent esc_pressed = new KeyPressedEvent(Input.KEY_ESCAPE);
@@ -81,8 +84,10 @@ public class HighscoreState extends BasicGameState {
      * Wird mit dem Frame ausgefuehrt
      */
 	@Override
-	public void render(GameContainer container, StateBasedGame game, 
-												Graphics g) throws SlickException {
+	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if (DEBUG)
+			return;
+		
 		entityManager.renderEntities(container, game, g);
 		
     	String filepath = System.getProperty("user.dir") + "/maps/highscores.txt";
@@ -98,7 +103,13 @@ public class HighscoreState extends BasicGameState {
 			
 			while ((line = bufferedReader.readLine()) != null){
 				
-				g.drawString(i+1 + ". " + line, 100, i * 20 + 200);
+
+				String[] parts = line.split(",");
+				System.out.println(parts[0]);
+				
+				g.setColor(Color.black);
+				g.drawString(i+1 + ". " + parts[0] + "  |  " + parts[1], 100, i * 30 + 150);
+				
 				stringBuffer.append(line);
 				stringBuffer.append("\n");
 				

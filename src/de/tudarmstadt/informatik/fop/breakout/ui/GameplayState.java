@@ -12,14 +12,22 @@ import java.io.PrintWriter;
 import java.lang.annotation.Target;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
+import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.Input;
+import org.newdawn.slick.KeyListener;
+import org.newdawn.slick.Music;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
+import org.newdawn.slick.gui.AbstractComponent;
+import org.newdawn.slick.gui.ComponentListener;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
@@ -65,6 +73,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private boolean bBlockedRight = false;
 	private boolean bBlockedLeft = false;
 	
+	private boolean bDoOnce = true;
+	
 	private boolean bSkipCollision = false;
 	
 	private boolean isRuning = true;
@@ -76,10 +86,18 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private int nSkipFrames = 4;
 	private int nSkipCount = 0;
 	
+	private int nScorePosition = 0;
+	
 	private float fTotalHighscore = 1000000.0f;
 	private float fTimeMultiplier = 20.0f;
 	
+	private float fPlayerScore = 0;
+	
 	private int nTotalBlocks = 0;
+	
+	private int GAMESTATE = 1;
+	
+	private String playerName = "aaa";
 	
 	private float fTime = 0;
 	private float fTimeForLevel = 400.0f;
@@ -88,8 +106,10 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	private static final float MAX_BALL_SPEED = 1.0f;
 	private static final float BALL_START_SPEED = 0.3f;
 	
-	private static final int MAX_LIFES = 4;
+	private static final int MAX_LIFES = 1;
 	private int nLifes = MAX_LIFES;
+	
+	private boolean bName = false;
 	
 	private Vector2f ballSpeed = new Vector2f(0,0);
 	private Vector2f vBallStartPos = new Vector2f(400, 490);
@@ -111,7 +131,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	Action actionX = new MoveRightAction(0.0f);
 	Action actionY = new MoveUpAction(0.0f);
     
-    GameplayState( int sid ) {
+    public GameplayState( int sid ) {
        stateID = sid;
        entityManager = StateBasedEntityManager.getInstance();
     }
@@ -138,6 +158,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	//Create Borders
     	
+
+    	
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.TOP).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.LEFT).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.RIGHT).createEntity());
@@ -149,12 +171,13 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	entState.setVisible(false);
     	entityManager.addEntity(stateID, entState);
     	
-    	for(int i = 0; i <= MAX_LIFES; i++)
+    	for(int i = 0; i <= MAX_LIFES - 1; i++)
     	{
     		Entity entlife = new Entity("life" + i);
     		entlife.setPassable(false);
     		entlife.setVisible(true);
     		entlife.setPosition(new Vector2f(i*50 + 30, 577));
+    		if(!DEBUG)
     		entlife.addComponent(new ImageRenderComponent(new Image("/images/ball.png"))); // Bildkomponente
     		
     		entityManager.addEntity(stateID, entlife);
@@ -243,13 +266,16 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
     	CreatePlayer();
     	
-    	CreateBall();
+    	entBall = CreateBall(BALL_ID);
     	
     	BallReset();
     }
     
     public void ReadLevel()
     {
+    	if(DEBUG)
+    		return;
+    	
     	try {
 			File file = new File(System.getProperty("user.dir") + "/maps/level1.map");
 			FileReader fileReader = new FileReader(file);
@@ -257,7 +283,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			StringBuffer stringBuffer = new StringBuffer();
 			String line;
 			
-			int lineCount = 1, brickCount = 0;
+			int lineCount = 1, brickCount = 0; 
 			int idBrick = 0;
 			int nTotal = 0;
 			
@@ -275,7 +301,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					
 					if (hp > 0)
 					{
-						entBrick = new BrickFactory(hp, idBrick).createEntity();
+						entBrick = new BrickFactory(hp, Integer.toString(idBrick)).createEntity();
 						Vector2f size = entBrick.getSize();
 						Vector2f pos = new Vector2f( size.x * (brickCount + 0.5f),  size.y * (lineCount + 0.5f));
 						entBrick.setPosition(pos);
@@ -314,6 +340,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
     {
 	  //Create Player
 		entPlayer = new Entity(PLAYER_ID);
+		if(!DEBUG)
 		entPlayer.addComponent(new ImageRenderComponent(new Image("/images/stick.png"))); // Bildkomponente
 		entPlayer.setPosition(new Vector2f(400, 515));
 		
@@ -334,8 +361,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 				if (!isRuning)
 					return;
 				
-				boolean bl = gc.getInput().isKeyDown(Input.KEY_A);
-		    	boolean br = gc.getInput().isKeyDown(Input.KEY_D);
+				boolean bl = gc.getInput().isKeyDown(Input.KEY_A) || gc.getInput().isKeyDown(Input.KEY_LEFT);
+		    	boolean br = gc.getInput().isKeyDown(Input.KEY_D) || gc.getInput().isKeyDown(Input.KEY_RIGHT);
 		    	
 		    	Vector2f pvec = entPlayer.getPosition();
 		    	
@@ -371,9 +398,10 @@ public class GameplayState extends BasicGameState implements GameParameters {
     }
      
     
-    public void CreateBall() throws SlickException
+    public Entity CreateBall(String id) throws SlickException
     {
-    	entBall = new Entity(BALL_ID);
+    	Entity entBall = new Entity(id);
+    	if(!DEBUG)
     	entBall.addComponent(new ImageRenderComponent(new Image("/images/ball.png"))); // Bildkomponente
     	entBall.setPosition(vBallStartPos);
     	
@@ -395,7 +423,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
 				Entity target = collision.getCollidedEntity();
 				
-				System.out.println(target.getID());
+				//System.out.println(target.getID());
 				
 				Vector2f pall = entBall.getPosition();
 				Vector2f vTarget = target.getPosition();
@@ -430,14 +458,19 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					break;
 					
 				case "downBorder":
-					PlayerLooseLife();
+						PlayerLooseLife();
 					break;
 
 				case "player":
 					if (bSkipCollision)
 						return;
 				
-			
+					try {
+		    			PlaySound("hitStick.wav");
+		    		} catch (SlickException e) {
+		    			// TODO Auto-generated catch block
+		    			e.printStackTrace();
+		    		}
 					
 					if (FInRange(pall.x - entBall.getSize().x, vTarget.x, target.getSize().x/2) || FInRange(pall.x + entBall.getSize().x, vTarget.x, target.getSize().x/2))
 						if (pall.y >= vTarget.y)
@@ -565,6 +598,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			}
 			});
     	entBall.addComponent(ballUpdate);
+    	
+    	return entBall;
     }
     
     public int CountBlockHp()
@@ -597,14 +632,25 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	if (hp <= 0)
     	{
-    		new SoundClipTest("Omnomnom.wav");
+    		try {
+				PlaySound("Omnomnom.wav");
+			} catch (SlickException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     		vBricks.set(ID, null);
     		entityManager.removeEntity(stateID, t);
     	}
     	else
-    	{
-			new SoundClipTest("Autsch.wav");
-			
+    	{	
+    		
+    		try {
+    			PlaySound("hitBlock.wav");
+    		} catch (SlickException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    		
 	    	try {
 				// Bild laden und zuweisen
 				t.addComponent(new ImageRenderComponent(new Image("images/block_" + hp + ".png")));
@@ -616,7 +662,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	int hpTotal = CountBlockHp();
     	
-    	System.out.println("total hp " + hpTotal);
+    	//System.out.println("total hp " + hpTotal);
     	if (hpTotal <= 0)
     		GameWon();
     }
@@ -624,22 +670,22 @@ public class GameplayState extends BasicGameState implements GameParameters {
     public void GameWon()
     {
     	isRuning = false;
-    	System.out.println("YOU WIN");
+    	//System.out.println("YOU WIN");
     	Entity ent = entityManager.getEntity(stateID, "gamestate");
     	ent.setScale(3.0f);
     }
 
     public void GameOver()
     {
+    	
     	isRuning = false;
-    	System.out.println("game over");
+    	//System.out.println("game over");
     	Entity ent = entityManager.getEntity(stateID, "gamestate");
     	ent.setScale(2.0f);
     }
     
-    public void StoreHighscore(int score)
+    public void StoreHighscore(int score, String name)
     {
-    	boolean scoreSet = false;
     	String filepath = System.getProperty("user.dir") + "/maps/highscores.txt";
     	
     	try {
@@ -648,38 +694,130 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 			StringBuffer stringBuffer = new StringBuffer();
 			String line;
+			String temp = "";
+			
+			int nline = 1;
+			List<String> lines = new ArrayList<String>();
 			
 			while ((line = bufferedReader.readLine()) != null){
+				lines.add(line);
+			}
+			
+			for(int i = 0; i < lines.size(); i++)
+			{
+				String[] parts = lines.get(i).split(",");
+				//System.out.println(parts[0]);
 				
-				if(score > Integer.parseInt(line.trim()) && !scoreSet)
+				if(score > Integer.parseInt(parts[0].trim()))
 				{
-					line = Integer.toString(score);
-					scoreSet = true;
+					parts[0] = Integer.toString(score);
+					parts[1] = name.trim();
+					
+					lines.add(parts[0] + "," + parts[1]);
+					
+					Collections.sort(lines, new Comparator<String>() {
+				        @Override
+				        public int compare(String s1, String s2)
+				        {
+				        	String[] p1 = s1.split(",");
+				        	String[] p2 = s2.split(",");
+				        	
+				        	if (Integer.parseInt(p1[0]) == Integer.parseInt(p2[0]))
+				        		return 0;
+				        	
+				        	if (Integer.parseInt(p1[0]) > Integer.parseInt(p2[0]))
+				        		return 1;
+				        	
+				        	if (Integer.parseInt(p1[0]) < Integer.parseInt(p2[0]))
+				        		return -1;
+				        	
+				        	return 0;
+				        }
+				    });
+					
+					lines.remove(0);
+					
+					java.util.Collections.reverse(lines);
+					
 					isHighscore = true;
+					nScorePosition = nline;
+					break;
 				}
 				
-				stringBuffer.append(line);
-				stringBuffer.append("\n");
+				nline += 1;
+
+			}
+			
+			for(int i = 0; i < lines.size(); i++)
+			{
+				
 			}
 
     		fileReader.close();
     		
     		
     		PrintWriter writer = new PrintWriter(filepath, "UTF-8");
-    	    writer.print(stringBuffer.toString());
+    		for(int i = 0; i < lines.size(); i++)
+			{
+    			writer.print(lines.get(i) + "\n");
+			}
     	    writer.close();
     		
-			System.out.println("Contents of file:");
-			System.out.println(stringBuffer.toString());
+			//System.out.println("Contents of file:");
+			//System.out.println(stringBuffer.toString());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
     }
     
+    public boolean CheckHighscore(int score)
+    {
+    	String filepath = System.getProperty("user.dir") + "/maps/highscores.txt";
+    	
+    	try {
+			File file = new File(filepath);
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			StringBuffer stringBuffer = new StringBuffer();
+			String line;
+			String temp = "";
+			
+			int nline = 1;
+			List<String> lines = new ArrayList<String>();
+			
+			while ((line = bufferedReader.readLine()) != null){
+				lines.add(line);
+			}
+			
+			for(int i = 0; i < lines.size(); i++)
+			{
+				String[] parts = lines.get(i).split(",");
+				//System.out.println(parts[0]);
+				
+				if(score > Integer.parseInt(parts[0].trim()))
+				{
+					nScorePosition = nline;
+					return true;
+				}
+				
+				nline += 1;
+
+			}
+
+    		fileReader.close();
+    		
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    	
+    	return false;
+    }
+    
     public void PlayerLooseLife()
     {
     	
-    	Entity entlife = entityManager.getEntity(stateID, "life" + nLifes);
+    	Entity entlife = entityManager.getEntity(stateID, "life" + (nLifes - 1));
+    	nLifes -= 1;
 		if (entlife != null)
 			entlife.setVisible(false);
 		
@@ -687,8 +825,14 @@ public class GameplayState extends BasicGameState implements GameParameters {
     		GameOver();
     	else
     	{
+    		try {
+    			PlaySound("Autsch.wav");
+    		} catch (SlickException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    		
     		BallReset();
-			nLifes -= 1;
     	}
     }
  
@@ -803,6 +947,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	if (!gc.isPaused() && gameState <= 1)
     		fTime += delta;
+
+		GAMESTATE = gameState;
 	}
     
     /**
@@ -811,6 +957,12 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	@Override
 	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
 		// StatedBasedEntityManager soll alle Entities rendern
+		
+		if (DEBUG)
+			return;
+		
+		g.setColor(Color.black);
+		
 		g.drawImage(new Image("/images/background.png"), 0, 0);	
 		entityManager.renderEntities(container, game, g);
 		
@@ -843,45 +995,169 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		g.drawString("|    " + nBricks + " / " + nTotalBlocks + "  |  " + (int)(timeLeft) + "s" + "  |  " + (int)highscore, 130, 10);
 		
 		//System.out.println(highscore + "ents: " + nTotalBlocks + " / " + nBricks + " time: " + fTime / 1000);
+
+		//System.out.println(gameState);
 		
-		Entity entState = entityManager.getEntity(stateID, "gamestate");
+		fPlayerScore = highscore;
 		
-		int gameState = (int)entState.getScale();
-		System.out.println(gameState);
+		if(GAMESTATE == 3)
+			fPlayerScore = highscore * fTimeMultiplier * timeLeft / fTimeForLevel;
+
+		if (GAMESTATE == 2 || GAMESTATE == 3)
+			OnGameEnd();
 		
-		switch (gameState)
+		switch (GAMESTATE)
 		{
 		case 1:
 			
 			break;
 			
+			//loose
 		case 2:
-			if (!scoreStored)
-				StoreHighscore((int)highscore);
-			scoreStored = true;
 			
 			g.drawImage(new Image("/images/Lose.png"), 300, 360);
-			if (isHighscore)
-				g.drawString("New Highscore: " + (int)highscore + " !!", 500, 400);
-			else
-				g.drawString("Score: " + (int)highscore, 500, 400);
+			HighScoreScreen(container, game, g, highscore);
 			break;
-			
+			//win
 		case 3:
-			highscore = highscore * fTimeMultiplier * timeLeft / fTimeForLevel;
-			
-			if (!scoreStored)
-				StoreHighscore((int)highscore);
-			scoreStored = true;
-			
 			g.drawImage(new Image("/images/win.png"), 300, 360);
-			if (isHighscore)
-				g.drawString("New Highscore: " + (int)highscore + " !!", 500, 400);
-			else
-				g.drawString("Score: " + (int)highscore, 500, 400);
+			
+			
+			HighScoreScreen(container, game, g, highscore);
 			break;
 		}
 		
+	}
+	
+	public void OnGameEnd()
+	{
+		if (!bDoOnce)
+			return;
+		
+		bDoOnce = false;
+		isHighscore = CheckHighscore((int)fPlayerScore);
+		
+		if (isHighscore)
+		{
+			try {
+				PlaySound("Brett vergrößern.wav");
+			} catch (SlickException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			bName = false;
+		}
+		else
+		{
+			try {
+				PlaySound("Brett verkleinern.wav");
+			} catch (SlickException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			bName = true;
+		}
+			
+	}
+	
+	public void keyPressed(int key, char c) {
+		
+		if (key == Input.KEY_ENTER) {
+        	bName = true;
+        }
+		
+		if (key == Input.KEY_BACK && !bName) {
+			if (playerName.trim().length() > 0)
+				playerName = playerName.trim().substring(0, playerName.trim().length()-1);
+			
+			System.out.println(playerName.length());
+        }
+
+		
+        if(isHighscore && !bName)
+        	playerName = playerName.trim() + Character.toString(c);
+
+            super.keyPressed(key, c);
+	}
+
+	public void keyReleased(int key, char c) {
+
+        if (key == Input.KEY_0) {
+        }
+
+            super.keyReleased(key, c);
+	}
+	
+	public void HighScoreScreen(GameContainer gc, StateBasedGame game, Graphics g, float score)
+	{
+		
+		if (!scoreStored && bName)
+		{
+			StoreHighscore((int)score, playerName);
+			scoreStored = true;
+
+			if (isHighscore)
+			{
+				try {
+					PlaySound("Hovern.wav");
+				} catch (SlickException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			
+				game.enterState(HIGHSCORE_STATE);
+			}
+		}
+		
+		if (isHighscore)
+		{
+			g.drawString("New Highscore: " + (int)score + " !!", 500, 400);
+			g.drawString(nScorePosition  + ". " + "ENTER NAME: " + playerName, 500, 450);
+		}
+		else
+			g.drawString("Score: " + (int)score, 500, 400);
+	}
+	
+	public float getBallSpeed()
+	{
+		return ballSpeed.x;
+	}
+	
+	public void setBallSpeed(float speed)
+	{
+		ballSpeed.x = speed;
+		ballSpeed.y = speed;
+	}
+	
+	public Entity getBall()
+	{
+		return entBall;
+	}
+	
+	public void playerAddLifes(int lifes)
+	{
+		nLifes += lifes;
+	}
+	
+	public void playerSetLifes(int lifes)
+	{
+		nLifes = lifes;
+	}
+	
+	public int playerGetLifes()
+	{
+		return nLifes;
+	}
+	
+	public void PlaySound(String s) throws SlickException
+	{
+		if (DEBUG)
+			return;
+		
+		Music Sound_1 = new Music(System.getProperty("user.dir") + "/sounds/" + s);
+    	Sound_1.play(1.0f, 0.4f);
 	}
 
 	@Override

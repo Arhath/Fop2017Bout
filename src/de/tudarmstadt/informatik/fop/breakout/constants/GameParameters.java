@@ -43,6 +43,8 @@ public interface GameParameters {
 
 	// Timer
 	public static final String STOP_WATCH_ID = "stopWatch";
+	
+	public static final boolean DEBUG = false;
 
 	// Ball
 	public static final String BALL_ID = "ball";

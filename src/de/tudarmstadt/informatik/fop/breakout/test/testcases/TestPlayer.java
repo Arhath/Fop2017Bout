@@ -27,7 +27,7 @@ public class TestPlayer {
 	@Test
 	public void testaddLives(){
 		this.adapter.addLives(2);
-		assertEquals("after addLives the value should be 5", 5, this.adapter.getLivesLeft(),0);
+		assertEquals("after addLives the value should be 8", 8, this.adapter.getLivesLeft(),0);
 	}
 	
 	@Test

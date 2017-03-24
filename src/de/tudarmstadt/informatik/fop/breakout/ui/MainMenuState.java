@@ -3,14 +3,17 @@ package de.tudarmstadt.informatik.fop.breakout.ui;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
+import org.newdawn.slick.Music;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
+import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 import eea.engine.action.Action;
 import eea.engine.action.basicactions.ChangeStateInitAction;
 import eea.engine.action.basicactions.QuitAction;
+import eea.engine.component.Component;
 import eea.engine.component.render.ImageRenderComponent;
 import eea.engine.entity.Entity;
 import eea.engine.entity.StateBasedEntityManager;
@@ -25,7 +28,7 @@ import eea.engine.event.basicevents.MouseEnteredEvent;
  * Spiel gestartet werden kann und das gesamte Spiel beendet 
  * werden kann.
  */
-public class MainMenuState extends BasicGameState {
+public class MainMenuState extends BasicGameState implements GameParameters {
 
 	private int stateID; 							// Identifier von diesem BasicGameState
 	private StateBasedEntityManager entityManager; 	// zugehoeriger entityManager
@@ -43,10 +46,12 @@ public class MainMenuState extends BasicGameState {
      */
     @Override
 	public void init(GameContainer container, StateBasedGame game) throws SlickException {
+    	
     	// Hintergrund laden
     	Entity background = new Entity("menu");	// Entitaet fuer Hintergrund
     	background.setPosition(new Vector2f(400,300));	// Startposition des Hintergrunds
-    	background.addComponent(new ImageRenderComponent(new Image("/images/menu.png"))); // Bildkomponente
+    	if(!DEBUG)
+    		background.addComponent(new ImageRenderComponent(new Image("/images/menu.png"))); // Bildkomponente
     	    	
     	// Hintergrund-Entitaet an StateBasedEntityManager uebergeben
     	entityManager.addEntity(stateID, background);
@@ -57,7 +62,8 @@ public class MainMenuState extends BasicGameState {
     	
     	// Setze Position und Bildkomponente
     	new_Game_Entity.setPosition(new Vector2f(200, 190));
-    	new_Game_Entity.addComponent(new ImageRenderComponent(new Image("images/start.png")));
+    	if(!DEBUG)
+    		new_Game_Entity.addComponent(new ImageRenderComponent(new Image("images/start.png")));
     	new_Game_Entity.setScale(1.0f);
     	
     	// Erstelle das Ausloese-Event und die zugehoerige Action
@@ -66,11 +72,25 @@ public class MainMenuState extends BasicGameState {
     	mainEvents.addAction(new_Game_Action);
     	new_Game_Entity.addComponent(mainEvents);
     	
+    	mainEvents.addAction(new Action() {
+    			@Override
+    			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+    				
+		    		try {
+		    			PlaySound("Hovern.wav");
+		    		} catch (SlickException e) {
+		    			// TODO Auto-generated catch block
+		    			e.printStackTrace();
+		    		}
+    			}});
+    
+    	
     	// Fuege die Entity zum StateBasedEntityManager hinzu
     	entityManager.addEntity(this.stateID, new_Game_Entity);
     	
     	Entity score_Entity = new Entity("highscore");
     	score_Entity.setPosition(new Vector2f(200, 450));
+    	if(!DEBUG)
     	score_Entity.addComponent(new ImageRenderComponent(new Image("images/highscore.png")));
     	score_Entity.setScale(1.0f);
     	
@@ -80,11 +100,24 @@ public class MainMenuState extends BasicGameState {
     	mainEventss.addAction(new_Game_Actions);
     	score_Entity.addComponent(mainEventss);
     	
+    	mainEventss.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				
+	    		try {
+	    			PlaySound("Hovern.wav");
+	    		} catch (SlickException e) {
+	    			// TODO Auto-generated catch block
+	    			e.printStackTrace();
+	    		}
+			}});
+    	
     	// Fuege die Entity zum StateBasedEntityManager hinzu
     	entityManager.addEntity(this.stateID, score_Entity);
     	
     	Entity credit_Entity = new Entity("highscore");
     	credit_Entity.setPosition(new Vector2f(350, 450));
+    	if(!DEBUG)
     	credit_Entity.addComponent(new ImageRenderComponent(new Image("images/credits.png")));
     	credit_Entity.setScale(0.5f);
     	
@@ -94,6 +127,18 @@ public class MainMenuState extends BasicGameState {
     	creditEvent.addAction(credit_Action);
     	credit_Entity.addComponent(creditEvent);
     	
+    	creditEvent.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				
+	    		try {
+	    			PlaySound("Hovern.wav");
+	    		} catch (SlickException e) {
+	    			// TODO Auto-generated catch block
+	    			e.printStackTrace();
+	    		}
+			}});
+    	
     	// Fuege die Entity zum StateBasedEntityManager hinzu
     	entityManager.addEntity(this.stateID, credit_Entity);
     	
@@ -102,6 +147,7 @@ public class MainMenuState extends BasicGameState {
     	
     	// Setze Position und Bildkomponente
     	quit_Entity.setPosition(new Vector2f(200, 320));
+    	if(!DEBUG)
     	quit_Entity.addComponent(new ImageRenderComponent(new Image("images/exit.png")));
     	quit_Entity.setScale(1.0f);
     	
@@ -111,17 +157,27 @@ public class MainMenuState extends BasicGameState {
     	mainEvents_q.addAction(quit_Action);
     	quit_Entity.addComponent(mainEvents_q);
     	
+    
+    	
     	// Fuege die Entity zum StateBasedEntityManager hinzu
     	entityManager.addEntity(this.stateID, quit_Entity);
     	
     }
+    
+	public void PlaySound(String s) throws SlickException
+	{
+		if (DEBUG)
+			return;
+		
+		Music Sound_1 = new Music(System.getProperty("user.dir") + "/sounds/" + s);
+    	Sound_1.play(1.0f, 0.4f);
+	}
 
     /**
      * Wird vor dem Frame ausgefuehrt
      */
     @Override
-	public void update(GameContainer container, StateBasedGame game, int delta)
-			throws SlickException {
+	public void update(GameContainer container, StateBasedGame game, int delta)  throws SlickException {
 		entityManager.updateEntities(container, game, delta);
 	}
     
@@ -129,8 +185,10 @@ public class MainMenuState extends BasicGameState {
      * Wird mit dem Frame ausgefuehrt
      */
 	@Override
-	public void render(GameContainer container, StateBasedGame game, 
-												Graphics g) throws SlickException {
+	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if (DEBUG)
+			return;
+		
 		entityManager.renderEntities(container, game, g);
 	}
 

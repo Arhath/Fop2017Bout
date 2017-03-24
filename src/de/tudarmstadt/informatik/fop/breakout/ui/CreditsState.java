@@ -15,6 +15,7 @@ import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
+import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 import eea.engine.action.Action;
 import eea.engine.action.basicactions.ChangeStateAction;
 import eea.engine.action.basicactions.ChangeStateInitAction;
@@ -34,7 +35,7 @@ import eea.engine.event.basicevents.MouseEnteredEvent;
  * Spiel gestartet werden kann und das gesamte Spiel beendet 
  * werden kann.
  */
-public class CreditsState extends BasicGameState {
+public class CreditsState extends BasicGameState implements GameParameters {
 
 	private int stateID; 							// Identifier von diesem BasicGameState
 	private StateBasedEntityManager entityManager; 	// zugehoeriger entityManager
@@ -55,6 +56,7 @@ public class CreditsState extends BasicGameState {
     	// Hintergrund laden
     	Entity background = new Entity("menu");	// Entitaet fuer Hintergrund
     	background.setPosition(new Vector2f(400,300));	// Startposition des Hintergrunds
+    	if(!DEBUG)
     	background.addComponent(new ImageRenderComponent(new Image("/images/creditsScreen.png"))); // Bildkomponente
     	
     	Entity esc_Listener = new Entity("ESC_Listener");
@@ -81,8 +83,10 @@ public class CreditsState extends BasicGameState {
      * Wird mit dem Frame ausgefuehrt
      */
 	@Override
-	public void render(GameContainer container, StateBasedGame game, 
-												Graphics g) throws SlickException {
+	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if (DEBUG)
+			return;
+		
 		entityManager.renderEntities(container, game, g);
 	}
 

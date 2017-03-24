@@ -1,5 +1,14 @@
 package de.tudarmstadt.informatik.fop.breakout.test.adapter;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.newdawn.slick.GameContainer;
+import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.StateBasedGame;
@@ -7,9 +16,20 @@ import org.newdawn.slick.state.StateBasedGame;
 import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
 import de.tudarmstadt.informatik.fop.breakout.interfaces.IHitable;
 import de.tudarmstadt.informatik.fop.breakout.ui.Breakout;
+import de.tudarmstadt.informatik.fop.breakout.ui.GameplayState;
+import eea.engine.action.Action;
+import eea.engine.action.basicactions.MoveRightAction;
+import eea.engine.action.basicactions.MoveUpAction;
+import eea.engine.component.Component;
+import eea.engine.component.render.ImageRenderComponent;
 import eea.engine.entity.Entity;
 import eea.engine.entity.StateBasedEntityManager;
+import eea.engine.event.basicevents.CollisionEvent;
+import eea.engine.event.basicevents.LoopEvent;
 import eea.engine.test.TestAppGameContainer;
+
+import de.tudarmstadt.informatik.fop.breakout.factories.Block;
+import de.tudarmstadt.informatik.fop.breakout.factories.BrickFactory;
 
 public class Adapter implements GameParameters {
 
@@ -24,7 +44,22 @@ public class Adapter implements GameParameters {
 	TestAppGameContainer app;
 
   //TODO you should declare the additional attributes you may require here.
-
+	Entity entBall = null;
+	GameplayState gameplay = new GameplayState(0);
+	StateBasedEntityManager entityManager = StateBasedEntityManager.getInstance();
+	
+	Vector2f ballSpeed = new Vector2f(0,0);
+	
+	LoopEvent move = new LoopEvent();
+	Action actionX = new MoveRightAction(0.0f);
+	Action actionY = new MoveUpAction(0.0f);
+	
+	Vector2f stickpos = new Vector2f(0, 200);
+	
+	private List<Block> vbricks = new ArrayList<Block>();
+	
+	static int nLifes = 0;
+	
 	/**
 	 * Use this constructor to initialize everything you need.
 	 */
@@ -71,6 +106,61 @@ public class Adapter implements GameParameters {
 			app = new TestAppGameContainer(breakout);
 			app.start(0);
 		} catch (SlickException e) {
+			e.printStackTrace();
+		}
+		
+		createBallInstance("ball");
+		
+		try {
+			File file = new File(System.getProperty("user.dir") + "/maps/level1.map");
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			StringBuffer stringBuffer = new StringBuffer();
+			String line;
+			
+			int lineCount = 0, brickCount = 0;
+			int idBrick = 0;
+			int nTotal = 0;
+			
+			Block block = null;
+			
+			while ((line = bufferedReader.readLine()) != null) {
+				
+				String[] parts = line.split(",");
+				System.out.println(parts[0]);
+				
+				for (int i = 0; i <= parts.length-1; i++)
+				{
+					int hp = Integer.parseInt(parts[i]);
+					System.out.println(hp);
+					
+					if (hp > 0)
+					{
+						String blockID = "block" + brickCount + "_" + lineCount;
+						
+						block = new Block(blockID, hp);
+						
+						vbricks.add(block);
+						
+						nTotal += 1;
+					}
+					
+					brickCount += 1;
+					idBrick += 1;
+				}
+				
+				System.out.println(" newline" + lineCount);
+				lineCount += 1;
+				brickCount = 0;
+				
+				stringBuffer.append(line);
+				stringBuffer.append("\n");
+			}
+			
+			fileReader.close();
+			//System.out.println("Contents of file:");
+			//System.out.println(stringBuffer.toString());
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -120,7 +210,166 @@ public class Adapter implements GameParameters {
 	 */
 	public Entity createBallInstance(String ballID) {
 	  //TODO write code that returns a ball instance with ID 'ballID'
-	  return null;
+		
+		entBall = new Entity(ballID);
+    	entBall.setPosition(new Vector2f(-100,-100));
+    	
+    	entBall.setVisible(true);
+    	entBall.setPassable(false);
+    	entityManager.addEntity(1, entBall);
+    	
+    	entBall.addComponent(move);
+    	
+    	CollisionEvent collision = new CollisionEvent();
+    	
+    	collision.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta,
+					Component event) {
+	    	
+		    	//System.out.println(nSkipCount);
+				
+
+				Entity target = collision.getCollidedEntity();
+				
+				System.out.println(target.getID());
+				
+				Vector2f pall = entBall.getPosition();
+				Vector2f vTarget = target.getPosition();
+			
+				String tID = (String)target.getID();
+				String id = "";
+				
+				if (tID.contains("block"))
+				{
+					id = tID.substring(5);
+					tID = "block";
+				}
+				
+				switch(tID)
+				{
+				case "leftBorder":
+					ballSpeed.x = Math.abs(ballSpeed.x);
+					break;
+					
+				case "rightBorder":
+					ballSpeed.x = Math.abs(ballSpeed.x) * -1.0f;
+					break;
+					
+				case "topBorder":
+					ballSpeed.y = Math.abs(ballSpeed.y) * -1.0f;
+					break;
+					
+				case "downBorder":
+						//PlayerLooseLife();
+					break;
+
+				case "player":
+					//if (bSkipCollision)
+						//return;
+				
+					
+					if (FInRange(pall.x - entBall.getSize().x, vTarget.x, target.getSize().x/2) || FInRange(pall.x + entBall.getSize().x, vTarget.x, target.getSize().x/2))
+						if (pall.y >= vTarget.y)
+							ballSpeed.y = Math.abs(ballSpeed.y) * -1;
+						else
+						{
+							ballSpeed.y = Math.abs(ballSpeed.y);
+						}
+					
+					if (pall.y >= vTarget.y - target.getSize().y / 2 && pall.y <= vTarget.y + target.getSize().y / 2 )
+						if (pall.x >= vTarget.x)
+						{
+							ballSpeed.y = Math.abs(ballSpeed.y);
+							ballSpeed.x = Math.abs(ballSpeed.x) * 1.2f;
+						}
+						else
+						{
+							ballSpeed.y = Math.abs(ballSpeed.y);
+							ballSpeed.x = Math.abs(ballSpeed.x) * -1.2f;
+						}
+
+					
+					break;
+					
+				case "block":
+					
+					System.out.println(id);
+					
+					if (target.isPassable())
+						return;
+
+					//System.out.println("c: " + colOri); 
+					//System.out.println(dOffX);
+					//System.out.println(dOffY);
+					
+					if (FInRange(pall.x - entBall.getSize().x, vTarget.x, target.getSize().x/2) || FInRange(pall.x + entBall.getSize().x, vTarget.x, target.getSize().x/2))
+						if (pall.y >= vTarget.y)
+							ballSpeed.y = Math.abs(ballSpeed.y) * -1;
+						else
+							ballSpeed.y = Math.abs(ballSpeed.y);
+					
+					if (pall.y >= vTarget.y - target.getSize().y / 2 && pall.y <= vTarget.y + target.getSize().y / 2 )
+						if (pall.x >= vTarget.x)
+							ballSpeed.x = Math.abs(ballSpeed.x);
+						else
+							ballSpeed.x = Math.abs(ballSpeed.x) * -1;
+					
+//					if (IsAngleBetween(colOri, 270.0d - dOffX, 270.0d + dOffX))
+//					{
+//						ballSpeed.y = Math.abs(ballSpeed.y);
+//					}
+//					else
+//					if (IsAngleBetween(colOri, 90.0d - dOffX, 90.0d + dOffX))
+//					{
+//						ballSpeed.y = Math.abs(ballSpeed.y) * -1;
+//					}
+//					else
+//					if (IsAngleBetween(colOri, 180.0d - dOffY, 180.0d + dOffY))
+//					{
+//						ballSpeed.x = Math.abs(ballSpeed.x) * -1;
+//					}
+//					else
+//					if (IsAngleBetween(colOri, 360.0d - dOffY, 360.0d + dOffY))
+//					{
+//						ballSpeed.x = Math.abs(ballSpeed.x);
+//					}
+					
+					//BlockHit(target, id, 1);
+
+					//target.setVisible(false);
+					//target.setPassable(true);
+					break;
+				}
+			}    	
+    		});
+    	
+    	
+    	entBall.addComponent(collision);
+
+    	LoopEvent ballUpdate = new LoopEvent();
+    	ballUpdate.addAction(new Action() {
+			@Override
+			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				
+				move.removeAction(actionX);
+		    	move.removeAction(actionY);
+		    	
+				//System.out.println(ballSpeed.x);
+		    	
+		    	actionX = new MoveRightAction (ballSpeed.x);
+		    	actionY = new MoveUpAction(ballSpeed.y);
+		    	
+
+		    	move.addAction(actionX);
+		    	move.addAction(actionY);
+		    	
+		    	//System.out.println(ballSpeed.x);
+			}
+			});
+    	entBall.addComponent(ballUpdate);
+    	
+    	return entBall;
 	}
 
 	/**
@@ -136,7 +385,10 @@ public class Adapter implements GameParameters {
 	public IHitable createBlockInstance(String blockID, int hitsUntilDestroyed) {
 	  //TODO write code that returns a block instance with ID 'blockID'
 	  // and that requires hitsUntilDestroyed "hits" until it vanishes
-	  return null;
+		
+		Block block = new Block(blockID, hitsUntilDestroyed);
+		
+	  return block;
 	}
 
 	/**
@@ -147,6 +399,7 @@ public class Adapter implements GameParameters {
 	 */
 	public void setRotation(int i) {
 	  //TODO write code sets the ball rotation to the value passed in
+		entBall.setRotation(i);
 	}
 
   /**
@@ -157,7 +410,7 @@ public class Adapter implements GameParameters {
    */
 	public float getRotation() {
     //TODO write code retrieves the ball's rotation
-	  return 0.0f; // this is only a dummy value to prevent compilation problems!
+		return entBall.getRotation();
 	}
 
 	/**
@@ -166,6 +419,7 @@ public class Adapter implements GameParameters {
 	 * @param vector2f the target position for the ball
 	 */
 	public void setPosition(Vector2f vector2f) {
+		entBall.setPosition(vector2f);
 	  //TODO provide code that sets the position of the ball to the coordinates passed in
 	}
 
@@ -176,8 +430,7 @@ public class Adapter implements GameParameters {
    * @return the size of the ball
    */
 	public Vector2f getSize() {
-	  //TODO write code that retrieves the size of the ball
-	  return new Vector2f(25, 25);
+		return entBall.getSize();
 	}
 
 	/**
@@ -187,7 +440,7 @@ public class Adapter implements GameParameters {
 	 */
 	public float getSpeed() {
     //TODO write code to retrieve the ball speed
-	  return 1.0f;
+	  return ballSpeed.x;
 	}
 
 	/**
@@ -196,6 +449,8 @@ public class Adapter implements GameParameters {
 	 * @param speed the new speed of the ball
 	 */
 	public void setSpeed(float speed) {
+		ballSpeed.x = speed;
+		ballSpeed.y = speed;
     //TODO write code to set the ball speed
 	}
 
@@ -215,7 +470,20 @@ public class Adapter implements GameParameters {
 	 */
 	public boolean collides(Entity otherEntity) {
 	  //TODO write code to test if the ball collides with 'otherEntity'
-	  return false;
+		if (otherEntity == null)
+			return false;
+		
+		if(otherEntity.isPassable() || otherEntity.getID().substring(0, 4).equals("ball"))
+			return false;
+		
+		Vector2f vb = entBall.getPosition();
+		Vector2f vt = otherEntity.getPosition();
+		System.out.println(entBall.getSize());
+		
+		if (FInRange(vb.x, vt.x, otherEntity.getSize().x/2) && FInRange(vb.y, vt.y, otherEntity.getSize().y/2))
+			return true;
+		
+		return false;	  
 	}
 
 	/* ***************************************************
@@ -230,6 +498,7 @@ public class Adapter implements GameParameters {
    */
 	public void addLives(int value) {
 	  //TODO write code to add the given number to the player's lives
+		nLifes += value;
 	}
 
 	/**
@@ -239,6 +508,7 @@ public class Adapter implements GameParameters {
 	 */
 	public void setLives(int playerLives) {
 	  //TODO write code to set the number of player's lives to playerLives
+		nLifes = playerLives;
 	}
 
 	/**
@@ -248,17 +518,18 @@ public class Adapter implements GameParameters {
 	 */
 	public int getLivesLeft() {
 	  //TODO write code to retrieve the number of lives left
-	  return 1;
+		
+	  return nLifes;
 	}
 
-	/**
+	/** 
 	 * checks if the player still has at least one live/ball left
 	 * 
 	 * @return true if the player still has at least one live/ball left, else false.
 	 */
 	public boolean hasLivesLeft() {
 	  //TODO write code to test if the player has at least one live left
-	  return true;
+		return nLifes > 0;
 	}
 
 	/* ***************************************************
@@ -276,6 +547,15 @@ public class Adapter implements GameParameters {
 	 */
 	public void setHitsLeft(int hitsLeft, String blockID) {
 	  //TODO write code to set the number of required hits for 'blockID' to hitsLeft
+		for(int i = 0; i < vbricks.size(); i++)
+		{
+			Block l = vbricks.get(i);
+			if (l.getID().compareTo(blockID) == 0)
+			{
+				l.setHitsLeft(hitsLeft);
+				return;
+			}
+		}
 	}
 
 	/**
@@ -287,7 +567,19 @@ public class Adapter implements GameParameters {
 	 */
 	public int getHitsLeft(String blockID) {
 	  //TODO write code to return how many hits 'blockID' needs to vanish
-	  return 1;
+		
+		for(int i = 0; i < vbricks.size(); i++)
+		{
+			Block l = vbricks.get(i);
+			if (l.getID().compareTo(blockID) == 0)
+			{
+				return l.getHitsLeft();
+			}
+		}
+		
+		throw new NullPointerException("null pointer exception");
+		
+		//return 0;
 	}
 
 	/**
@@ -300,6 +592,15 @@ public class Adapter implements GameParameters {
 	 */
 	public void addHitsLeft(int hitsLeft, String blockID) {
     //TODO write code to add the given number to the block's "hit capacity"
+		for(int i = 0; i < vbricks.size(); i++)
+		{
+			Block l = vbricks.get(i);
+			if (l.getID().compareTo(blockID) == 0)
+			{
+				l.addHitsLeft(hitsLeft);
+				return;
+			}
+		}
 	}
 
 	/**
@@ -311,7 +612,16 @@ public class Adapter implements GameParameters {
 	 */
 	public boolean hasHitsLeft(String blockID) {
     //TODO write code to return if the given block still has hits left
-	  return false;
+		for(int i = 0; i < vbricks.size(); i++)
+		{
+			Block l = vbricks.get(i);
+			if (l.getID().compareTo(blockID) == 0)
+			{
+				return l.hasHitsLeft();
+			}
+		}
+		
+		return false;
 	}
 
 	/* ***************************************************
@@ -326,7 +636,7 @@ public class Adapter implements GameParameters {
 	 */
 	public Vector2f getStickPosition() {
 	  //TODO write code to return the position of the stick
-	  return new Vector2f(0, 200); // these are arbitrary values(!)
+	  return stickpos; // these are arbitrary values(!)
 	}
 
 	/* ***************************************************
@@ -353,6 +663,7 @@ public class Adapter implements GameParameters {
 	public void handleKeyDownRightArrow() {
 	  //TODO write code for handling a "right arrow" key press
 	  // hint: you may use the above method.
+		stickpos = new Vector2f(700, 0);
 	}
 
 	/**
@@ -361,5 +672,14 @@ public class Adapter implements GameParameters {
 	public void handleKeyDownLeftArrow() {
     //TODO write code for handling a "left arrow" key press
     // hint: you may use the above method.
+		stickpos = new Vector2f(100, 0);
+	}
+	
+	public boolean FInRange(float x, float a, float off)
+	{
+		if (x >= a - off && x <= a + off)
+			return true;
+		
+		return false;
 	}
 }
