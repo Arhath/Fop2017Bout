@@ -1,16 +1,11 @@
 package de.tudarmstadt.informatik.fop.breakout.ui;
 
 
-import java.awt.geom.Arc2D.Double;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.annotation.Target;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -21,39 +16,25 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.Input;
-import org.newdawn.slick.KeyListener;
 import org.newdawn.slick.Music;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.gui.AbstractComponent;
-import org.newdawn.slick.gui.ComponentListener;
-import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
 import eea.engine.action.Action;
 import eea.engine.action.basicactions.ChangeStateAction;
-import eea.engine.action.basicactions.DestroyEntityAction;
-import eea.engine.action.basicactions.MoveDownAction;
 import eea.engine.action.basicactions.MoveUpAction;
 import eea.engine.action.basicactions.MoveRightAction;
-import eea.engine.action.basicactions.MoveLeftAction;
 import eea.engine.component.Component;
 import eea.engine.component.render.ImageRenderComponent;
 import eea.engine.entity.Entity;
 import eea.engine.entity.StateBasedEntityManager;
 import eea.engine.event.basicevents.KeyPressedEvent;
 import eea.engine.event.basicevents.CollisionEvent;
-import eea.engine.event.basicevents.KeyDownEvent;
-import eea.engine.event.basicevents.LeavingScreenEvent;
 import eea.engine.event.basicevents.LoopEvent;
-import eea.engine.event.basicevents.MouseClickedEvent;
 import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters;
-import de.tudarmstadt.informatik.fop.breakout.constants.GameParameters.BorderType;
 import de.tudarmstadt.informatik.fop.breakout.factories.*;
-
-import de.tudarmstadt.informatik.fop.breakout.ui.SoundClipTest;
-
 
 /**
  * @author Timo Bähr
@@ -66,27 +47,28 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	protected int stateID; 							// Identifier dieses BasicGameState
 	protected StateBasedEntityManager entityManager; 	// zugehoeriger entityManager
 	
-	private boolean bLeft = false;
-	private boolean bRight = false;
+	
+	//anfangsstatus des balls am brett
 	private boolean isLocked = true;
 	
-	private boolean bBlockedRight = false;
-	private boolean bBlockedLeft = false;
-	
+	//do once at game finish
 	private boolean bDoOnce = true;
 	
+	//skip collision for a number of frames to prevent bad behavior
 	private boolean bSkipCollision = false;
-	
-	private boolean isRuning = true;
-	
-	private boolean isHighscore = false;
-	
-	private boolean scoreStored = false;
-	
 	private int nSkipFrames = 4;
 	private int nSkipCount = 0;
 	
+	//game is runing?
+	private boolean isRuning = true;
+	
+	//did we achieve a highscore
+	private boolean isHighscore = false;
 	private int nScorePosition = 0;
+	
+	//already stored?
+	private boolean scoreStored = false;
+
 	
 	private float fTotalHighscore = 1000000.0f;
 	private float fTimeMultiplier = 20.0f;
@@ -95,22 +77,28 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	
 	private int nTotalBlocks = 0;
 	
-	private int GAMESTATE = 1;
+	//gamestate parsed via gameentity 
+	private int GAMESTATE = 1; // 1 = game 2 = lost 3 = won
 	
+	// playername for scoring
 	private String playerName = "aaa";
 	
+	//timer for level
 	private float fTime = 0;
 	private float fTimeForLevel = 400.0f;
 	
+	//player constants
 	private static final float MAX_PLAYER_SPEED = 0.6f;
 	private static final float MAX_BALL_SPEED = 1.0f;
 	private static final float BALL_START_SPEED = 0.3f;
 	
-	private static final int MAX_LIFES = 1;
+	private static final int MAX_LIFES = 4;
 	private int nLifes = MAX_LIFES;
 	
+	//do we require a name input?
 	private boolean bName = false;
 	
+	//ball and player varriables
 	private Vector2f ballSpeed = new Vector2f(0,0);
 	private Vector2f vBallStartPos = new Vector2f(400, 490);
 	
@@ -157,9 +145,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	
     	//Create Borders
-    	
 
-    	
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.TOP).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.LEFT).createEntity());
     	entityManager.addEntity(stateID, new BorderFactory(BorderType.RIGHT).createEntity());
@@ -171,6 +157,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	entState.setVisible(false);
     	entityManager.addEntity(stateID, entState);
     	
+    	
+    	//create lives
     	for(int i = 0; i <= MAX_LIFES - 1; i++)
     	{
     		Entity entlife = new Entity("life" + i);
@@ -183,14 +171,14 @@ public class GameplayState extends BasicGameState implements GameParameters {
     		entityManager.addEntity(stateID, entlife);
     	}
     	
-    	// Bei Drücken der ESC-Taste zurueck ins Hauptmenue wechseln
+    	// Bei Dr�cken der ESC-Taste zurueck ins Hauptmenue wechseln
     	Entity esc_Listener = new Entity("ESC_Listener");
     	KeyPressedEvent esc_pressed = new KeyPressedEvent(Input.KEY_ESCAPE);
     	esc_pressed.addAction(new ChangeStateAction(Breakout.MAINMENU_STATE));
     	esc_Listener.addComponent(esc_pressed);    	
     	entityManager.addEntity(stateID, esc_Listener);
     	
-    	
+    	//space frees the ball
     	Entity space_Listener = new Entity("SPACE_Listener");
     	KeyPressedEvent space_pressed = new KeyPressedEvent(Input.KEY_SPACE);
     	space_pressed.addAction(new Action() {
@@ -215,7 +203,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	space_Listener.addComponent(space_pressed);
     	entityManager.addEntity(stateID, space_Listener);
     	
-
+    	// p pauses the game
     	Entity pause_Listener = new Entity("PAUSE_Listener");
     	KeyPressedEvent pause_pressed = new KeyPressedEvent(Input.KEY_P);
     	pause_pressed.addAction(new Action() {
@@ -262,6 +250,9 @@ public class GameplayState extends BasicGameState implements GameParameters {
 //    	
 //    	entityManager.addEntity(stateID, mouse_Clicked_Listener);
     	
+    	
+    	
+    	//call creation methods
     	ReadLevel();
 
     	CreatePlayer();
@@ -270,6 +261,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	BallReset();
     }
+    
+    //level parser
     
     public void ReadLevel()
     {
@@ -336,6 +329,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		}
     }
     
+    
+    //create the player stick
     public void CreatePlayer() throws SlickException
     {
 	  //Create Player
@@ -351,6 +346,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		entPlayer.addComponent(pMove);
 		
     	LoopEvent pUpdate = new LoopEvent();
+    	
+    	//player update function
     	
     	pUpdate.addAction(new Action() {
 			@Override
@@ -397,6 +394,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     }
      
+    //create the ball entity
     
     public Entity CreateBall(String id) throws SlickException
     {
@@ -410,6 +408,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	entityManager.addEntity(stateID, entBall);
     	
     	entBall.addComponent(move);
+    	
+    	//ball collision handler
     	
     	CollisionEvent collision = new CollisionEvent();
     	
@@ -443,6 +443,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					tID = "block";
 				}
 				
+				//with what did we collide?
+				
 				switch(tID)
 				{
 				case "leftBorder":
@@ -472,6 +474,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		    			e.printStackTrace();
 		    		}
 					
+					// where did we collide? so we can reflect
+					
 					if (FInRange(pall.x - entBall.getSize().x, vTarget.x, target.getSize().x/2) || FInRange(pall.x + entBall.getSize().x, vTarget.x, target.getSize().x/2))
 						if (pall.y >= vTarget.y)
 							ballSpeed.y = Math.abs(ballSpeed.y) * -1;
@@ -496,6 +500,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
 					
 					break;
+					
+					// we hit a block
 					
 				case "block":
 					
@@ -547,6 +553,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					break;
 				}
 				
+				//skip 4 frames to not spamm collision in certain cases
+				
 				SkipCollision(4);
 			}    	
     		});
@@ -554,10 +562,15 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	entBall.addComponent(collision);
 
+    	
+    	// ball update function
+    	
     	LoopEvent ballUpdate = new LoopEvent();
     	ballUpdate.addAction(new Action() {
 			@Override
 			public void update(GameContainer gc, StateBasedGame sb, int delta, Component event) {
+				
+				//removing movement calculating and adding movement
 				
 				move.removeAction(actionX);
 		    	move.removeAction(actionY);
@@ -602,6 +615,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	return entBall;
     }
     
+    //total block hp 0 = win
+    
     public int CountBlockHp()
     {
     	int HP = 0;
@@ -611,6 +626,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	return HP;
     }
+    
+    //total blocks 0 = win
     
     public int CountBlocks()
     {
@@ -622,6 +639,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	
     	return c;
     }
+    
+    //hit that block with some damage
     
     public void BlockHit(Entity t, String id, int dmg)
     {
@@ -667,6 +686,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     		GameWon();
     }
     
+    //game won
+    
     public void GameWon()
     {
     	isRuning = false;
@@ -674,6 +695,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	Entity ent = entityManager.getEntity(stateID, "gamestate");
     	ent.setScale(3.0f);
     }
+    
+    //game over
 
     public void GameOver()
     {
@@ -684,11 +707,15 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	ent.setScale(2.0f);
     }
     
+    //called on game end to store the score and player name
+    
     public void StoreHighscore(int score, String name)
     {
     	String filepath = System.getProperty("user.dir") + "/maps/highscores.txt";
     	
     	try {
+    		
+    		//open file
 			File file = new File(filepath);
 			FileReader fileReader = new FileReader(file);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -699,9 +726,13 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			int nline = 1;
 			List<String> lines = new ArrayList<String>();
 			
+			//get all lines into list
+			
 			while ((line = bufferedReader.readLine()) != null){
 				lines.add(line);
 			}
+			
+			//iterate list and check if score is highscore
 			
 			for(int i = 0; i < lines.size(); i++)
 			{
@@ -714,6 +745,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 					parts[1] = name.trim();
 					
 					lines.add(parts[0] + "," + parts[1]);
+					
+					//compare scores leave out names then sort by highest score
 					
 					Collections.sort(lines, new Comparator<String>() {
 				        @Override
@@ -735,6 +768,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 				        }
 				    });
 					
+					//cut out last part because we now have 11 entries instead of 10
 					lines.remove(0);
 					
 					java.util.Collections.reverse(lines);
@@ -747,14 +781,10 @@ public class GameplayState extends BasicGameState implements GameParameters {
 				nline += 1;
 
 			}
-			
-			for(int i = 0; i < lines.size(); i++)
-			{
-				
-			}
 
     		fileReader.close();
     		
+    		//write file with new scores
     		
     		PrintWriter writer = new PrintWriter(filepath, "UTF-8");
     		for(int i = 0; i < lines.size(); i++)
@@ -769,6 +799,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			e.printStackTrace();
 		}
     }
+    
+    //check if we have a highscore same as above
     
     public boolean CheckHighscore(int score)
     {
@@ -813,8 +845,12 @@ public class GameplayState extends BasicGameState implements GameParameters {
     	return false;
     }
     
+    //player looses a life
+    
     public void PlayerLooseLife()
     {
+    	
+    	//we hide the live entity at the bottom
     	
     	Entity entlife = entityManager.getEntity(stateID, "life" + (nLifes - 1));
     	nLifes -= 1;
@@ -861,6 +897,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
     		ballSpeed.y = Math.max(-1 * MAX_BALL_SPEED, sp);
     }
     
+    //reset the ball when it respawns
+    
     public void BallReset()
     {
     	entBall.setPosition(new Vector2f(entPlayer.getPosition().x, entPlayer.getPosition().y - entBall.getSize().y));
@@ -879,6 +917,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		
 		return v3.getTheta();
     }
+    
+    //is the float value x in intervall [a+off; a-off] ? we use this for collision detection
     
 	public boolean FInRange(float x, float a, float off)
 	{
@@ -936,15 +976,14 @@ public class GameplayState extends BasicGameState implements GameParameters {
     @Override
 	public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		// StatedBasedEntityManager soll alle Entities aktualisieren
-    	
-    	bLeft = gc.getInput().isKeyDown(Input.KEY_A);
-    	bRight = gc.getInput().isKeyDown(Input.KEY_D);
 
     	entityManager.updateEntities(gc, game, delta);
     	
+    	//get gamestate
     	Entity entState = entityManager.getEntity(stateID, "gamestate");
 		int gameState = (int)entState.getScale();
     	
+		//timer while not paused
     	if (!gc.isPaused() && gameState <= 1)
     		fTime += delta;
 
@@ -958,15 +997,17 @@ public class GameplayState extends BasicGameState implements GameParameters {
 	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
 		// StatedBasedEntityManager soll alle Entities rendern
 		
+		//skip on debug
 		if (DEBUG)
 			return;
 		
+		//background
 		g.setColor(Color.black);
 		
 		g.drawImage(new Image("/images/background.png"), 0, 0);	
 		entityManager.renderEntities(container, game, g);
 		
-
+		//pause screen
 		if (container.isPaused())
 		{
 			g.drawImage(new Image("/images/pause.png"), 300, 360);
@@ -975,6 +1016,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			//g.drawImage(new Image("/images/pause.png"), 0, 0);
 			//g.drawString("GAME", 200, 200);
 		
+		//calculate highscore
 		int nBricks = 0;
 		
 		for(int i = 0; i < vBricks.size(); i++)
@@ -999,6 +1041,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		//System.out.println(gameState);
 		
 		fPlayerScore = highscore;
+		
+		//check if game is over
 		
 		if(GAMESTATE == 3)
 			fPlayerScore = highscore * fTimeMultiplier * timeLeft / fTimeForLevel;
@@ -1028,6 +1072,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		}
 		
 	}
+	
+	//do once on game end
 	
 	public void OnGameEnd()
 	{
@@ -1062,6 +1108,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 			
 	}
 	
+	//keyboard events for entering the name
+	
 	public void keyPressed(int key, char c) {
 		
 		if (key == Input.KEY_ENTER) {
@@ -1089,6 +1137,8 @@ public class GameplayState extends BasicGameState implements GameParameters {
 
             super.keyReleased(key, c);
 	}
+	
+	//this draws the highscore screen and waits for name input if neccesary
 	
 	public void HighScoreScreen(GameContainer gc, StateBasedGame game, Graphics g, float score)
 	{
@@ -1151,6 +1201,7 @@ public class GameplayState extends BasicGameState implements GameParameters {
 		return nLifes;
 	}
 	
+	// sound player
 	public void PlaySound(String s) throws SlickException
 	{
 		if (DEBUG)

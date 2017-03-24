@@ -164,6 +164,8 @@ public class MainMenuState extends BasicGameState implements GameParameters {
     	
     }
     
+    // funktion um sounds abzuspielen
+    
 	public void PlaySound(String s) throws SlickException
 	{
 		if (DEBUG)
